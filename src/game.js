@@ -23,6 +23,7 @@ let state = createInitialState();
 let tickHandle = null;
 let scoreHistory = loadScoreHistory();
 let activeRunSaved = false;
+let waitingForStart = true;
 
 const KEY_TO_DIRECTION = new Map([
   ["arrowup", "UP"],
@@ -121,6 +122,9 @@ function renderScoreHistory() {
 }
 
 function getStatusText() {
+  if (waitingForStart) {
+    return "Čeká na start (mezerník)";
+  }
   if (state.isGameOver) {
     return "Konec hry";
   }
@@ -228,12 +232,27 @@ function stopLoop() {
 
 function restart() {
   activeRunSaved = false;
+  waitingForStart = true;
+  stopLoop();
   saveStatus.textContent = "";
   playerNameInput.value = "";
   applyState(restartGame(state));
 }
 
+function startGameIfNeeded() {
+  if (!waitingForStart || state.isGameOver) {
+    return false;
+  }
+  waitingForStart = false;
+  startLoop();
+  render();
+  return true;
+}
+
 function togglePauseAction() {
+  if (waitingForStart) {
+    return;
+  }
   applyState(togglePause(state));
 }
 
@@ -263,6 +282,9 @@ window.addEventListener("keydown", (event) => {
 
   if (key === "p" || event.code === "Space") {
     event.preventDefault();
+    if (event.code === "Space" && startGameIfNeeded()) {
+      return;
+    }
     togglePauseAction();
     return;
   }
@@ -308,7 +330,13 @@ scoreForm.addEventListener("submit", (event) => {
 window.render_game_to_text = () =>
   JSON.stringify({
     coordinate_system: "origin_vlevo_nahoře; x roste doprava; y roste dolů",
-    mode: state.isGameOver ? "game_over" : state.isPaused ? "paused" : "running",
+    mode: waitingForStart
+      ? "waiting_start"
+      : state.isGameOver
+        ? "game_over"
+        : state.isPaused
+          ? "paused"
+          : "running",
     score: state.score,
     level: state.level,
     snake: state.snake,
@@ -317,6 +345,9 @@ window.render_game_to_text = () =>
   });
 
 window.advanceTime = (ms = TICK_MS) => {
+  if (waitingForStart) {
+    return;
+  }
   const steps = Math.max(1, Math.round(ms / TICK_MS));
   const wasRunning = tickHandle !== null;
 
@@ -334,4 +365,3 @@ window.advanceTime = (ms = TICK_MS) => {
 };
 
 render();
-startLoop();
