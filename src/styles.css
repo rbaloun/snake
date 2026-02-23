@@ -1,0 +1,151 @@
+:root {
+  color-scheme: light;
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  background-color: #fbfbfb;
+  color: #1f1f1f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 16px;
+  background: #fbfbfb;
+}
+
+.app {
+  display: grid;
+  grid-template-columns: minmax(320px, 560px) minmax(240px, 420px);
+  gap: 20px;
+  max-width: 1040px;
+  margin: 0 auto;
+}
+
+.game-panel,
+.sidebar section {
+  background: #ffffff;
+  border: 1px solid #e3e3e3;
+  border-radius: 8px;
+  padding: 14px;
+}
+
+h1,
+h2 {
+  margin: 0 0 12px;
+  font-weight: 650;
+}
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.stats p {
+  margin: 0;
+}
+
+#game-canvas {
+  width: 100%;
+  max-width: 520px;
+  aspect-ratio: 1 / 1;
+  border: 1px solid #2d2d2d;
+  background: #f2f2f2;
+}
+
+.controls-hint {
+  margin: 10px 0 0;
+  font-size: 0.95rem;
+}
+
+kbd {
+  border: 1px solid #cfcfcf;
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: #f6f6f6;
+  padding: 1px 5px;
+  font-size: 0.85rem;
+}
+
+.score-form {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.score-form label {
+  grid-column: 1 / -1;
+}
+
+.score-form input,
+.score-form button,
+.touch-controls button {
+  font: inherit;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #bdbdbd;
+}
+
+.score-form button,
+.touch-controls button {
+  background: #f2f2f2;
+  cursor: pointer;
+}
+
+.score-form button:hover,
+.touch-controls button:hover {
+  background: #ebebeb;
+}
+
+.save-status {
+  min-height: 1.3em;
+  margin: 8px 0 0;
+}
+
+.sidebar {
+  display: grid;
+  gap: 20px;
+}
+
+.dpad {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+}
+
+.dpad-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  width: 100%;
+}
+
+.action-buttons {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.touch-controls button {
+  width: 100%;
+}
+
+.history ol {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 6px;
+  font-size: 0.95rem;
+}
+
+@media (max-width: 860px) {
+  .app {
+    grid-template-columns: 1fr;
+  }
+}

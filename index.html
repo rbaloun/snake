@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="cs">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Snake</title>
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <section class="game-panel">
+        <h1>Snake</h1>
+        <div class="stats">
+          <p>Skóre: <strong id="score">0</strong></p>
+          <p>Level: <strong id="level">1</strong></p>
+          <p>Stav: <strong id="status">Hra běží</strong></p>
+        </div>
+        <canvas
+          id="game-canvas"
+          width="520"
+          height="520"
+          aria-label="Herní plocha Snake"
+        ></canvas>
+        <p class="controls-hint">
+          Klávesy: šipky / WASD, <kbd>P</kbd> nebo <kbd>Mezerník</kbd> = pauza,
+          <kbd>R</kbd> = restart.
+        </p>
+        <form id="score-form" class="score-form" hidden>
+          <label for="player-name">Jméno pro skóre:</label>
+          <input
+            id="player-name"
+            name="playerName"
+            type="text"
+            maxlength="20"
+            placeholder="Hráč"
+          />
+          <button type="submit">Uložit skóre</button>
+        </form>
+        <p id="save-status" class="save-status"></p>
+      </section>
+
+      <aside class="sidebar">
+        <section class="touch-controls" aria-label="Dotykové ovládání">
+          <h2>Ovládání</h2>
+          <div class="dpad">
+            <button data-dir="UP" type="button">Nahoru</button>
+            <div class="dpad-row">
+              <button data-dir="LEFT" type="button">Doleva</button>
+              <button data-dir="RIGHT" type="button">Doprava</button>
+            </div>
+            <button data-dir="DOWN" type="button">Dolů</button>
+          </div>
+          <div class="action-buttons">
+            <button data-action="pause" type="button">Pauza</button>
+            <button data-action="restart" type="button">Restart</button>
+          </div>
+        </section>
+
+        <section class="history">
+          <h2>Historie skóre</h2>
+          <ol id="score-history"></ol>
+        </section>
+      </aside>
+    </main>
+
+    <script type="module" src="./src/game.js"></script>
+  </body>
+</html>
