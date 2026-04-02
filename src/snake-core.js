@@ -1,5 +1,10 @@
 export const DEFAULT_GRID_SIZE = 20;
 
+export const POWER_UP_TYPES = Object.freeze(['slow', 'bonus', 'shrink']);
+const POWER_UP_DESPAWN_TICKS = 25;
+const POWER_UP_SLOW_TICKS = 30;
+const POWER_UP_SPAWN_CHANCE = 0.3;
+
 export const DIRECTIONS = Object.freeze({
   UP: { x: 0, y: -1 },
   DOWN: { x: 0, y: 1 },
@@ -162,6 +167,37 @@ export function placeFood({ gridSize, snake, walls, rng = Math.random }) {
   return freeCells[index];
 }
 
+export function placePowerUp({ gridSize, snake, walls, food, rng = Math.random }) {
+  const occupied = new Set([
+    ...snake.map(posKey),
+    ...walls.map(posKey),
+    ...(food ? [posKey(food)] : []),
+  ]);
+  const freeCells = [];
+
+  for (let y = 0; y < gridSize; y += 1) {
+    for (let x = 0; x < gridSize; x += 1) {
+      if (!occupied.has(`${x},${y}`)) {
+        freeCells.push({ x, y });
+      }
+    }
+  }
+
+  if (freeCells.length === 0) {
+    return null;
+  }
+
+  const raw = rng();
+  const normalized = Number.isFinite(raw) ? Math.abs(raw % 1) : 0;
+  const index = Math.min(freeCells.length - 1, Math.floor(normalized * freeCells.length));
+  const typeIndex = Math.floor(Math.abs(rng() % 1) * POWER_UP_TYPES.length);
+  return {
+    ...freeCells[index],
+    type: POWER_UP_TYPES[Math.min(typeIndex, POWER_UP_TYPES.length - 1)],
+    ticksLeft: POWER_UP_DESPAWN_TICKS,
+  };
+}
+
 export function createInitialState({ gridSize = DEFAULT_GRID_SIZE, rng } = {}) {
   const snake = createStartingSnake(gridSize);
   const level = 1;
@@ -180,6 +216,8 @@ export function createInitialState({ gridSize = DEFAULT_GRID_SIZE, rng } = {}) {
     isGameOver: false,
     isPaused: false,
     ticks: 0,
+    powerUp: null,
+    activePowerUp: null,
   };
 }
 
@@ -266,7 +304,37 @@ export function stepGame(state, { rng = Math.random } = {}) {
     nextSnake.pop();
   }
 
-  const nextScore = state.score + (willGrow ? 1 : 0);
+  // Power-up: tick down active effect
+  let nextActivePowerUp = state.activePowerUp;
+  if (nextActivePowerUp) {
+    const remaining = nextActivePowerUp.ticksRemaining - 1;
+    nextActivePowerUp = remaining > 0 ? { ...nextActivePowerUp, ticksRemaining: remaining } : null;
+  }
+
+  // Power-up: tick down on-grid item and check collection
+  let nextPowerUp = state.powerUp;
+  if (nextPowerUp) {
+    if (samePos(nextHead, nextPowerUp)) {
+      // Collect power-up
+      if (nextPowerUp.type === 'slow') {
+        nextActivePowerUp = { type: 'slow', ticksRemaining: POWER_UP_SLOW_TICKS };
+      } else if (nextPowerUp.type === 'bonus') {
+        // bonus points handled below via bonusScore
+      } else if (nextPowerUp.type === 'shrink') {
+        const removeCount = Math.min(3, nextSnake.length - 1);
+        nextSnake.splice(nextSnake.length - removeCount, removeCount);
+      }
+      nextPowerUp = null;
+    } else {
+      const tl = nextPowerUp.ticksLeft - 1;
+      nextPowerUp = tl > 0 ? { ...nextPowerUp, ticksLeft: tl } : null;
+    }
+  }
+
+  const collectedBonus = state.powerUp && samePos(nextHead, state.powerUp) && state.powerUp.type === 'bonus';
+  const bonusScore = collectedBonus ? 3 : 0;
+
+  const nextScore = state.score + (willGrow ? 1 : 0) + bonusScore;
   const nextLevel = Math.floor(nextScore / 10) + 1;
   const nextWalls =
     nextLevel === state.level
@@ -289,6 +357,17 @@ export function stepGame(state, { rng = Math.random } = {}) {
     });
   }
 
+  // Spawn power-up after eating food (30% chance, if none on grid)
+  if (willGrow && !nextPowerUp && rng() < POWER_UP_SPAWN_CHANCE) {
+    nextPowerUp = placePowerUp({
+      gridSize: state.gridSize,
+      snake: nextSnake,
+      walls: nextWalls,
+      food: nextFood,
+      rng,
+    });
+  }
+
   const outOfSpace = nextFood === null;
 
   return {
@@ -302,6 +381,8 @@ export function stepGame(state, { rng = Math.random } = {}) {
     walls: nextWalls,
     isGameOver: outOfSpace,
     ticks: state.ticks + 1,
+    powerUp: nextPowerUp,
+    activePowerUp: nextActivePowerUp,
   };
 }
 

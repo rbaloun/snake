@@ -7,6 +7,7 @@ import {
 } from "./snake-core.js";
 
 const TICK_MS = 140;
+const TICK_MS_SLOW = 280;
 const SCORE_STORAGE_KEY = "snake-score-history-v1";
 
 const canvas = document.querySelector("#game-canvas");
@@ -14,10 +15,12 @@ const ctx = canvas.getContext("2d");
 const scoreEl = document.querySelector("#score");
 const levelEl = document.querySelector("#level");
 const statusEl = document.querySelector("#status");
+const powerUpStatusEl = document.querySelector("#power-up-status");
 const scoreForm = document.querySelector("#score-form");
 const playerNameInput = document.querySelector("#player-name");
 const saveStatus = document.querySelector("#save-status");
 const historyEl = document.querySelector("#score-history");
+const pauseButton = document.querySelector('[data-action="pause"]');
 
 let state = createInitialState();
 let tickHandle = null;
@@ -123,7 +126,7 @@ function renderScoreHistory() {
 
 function getStatusText() {
   if (waitingForStart) {
-    return "Čeká na start (mezerník)";
+    return "Čeká na start";
   }
   if (state.isGameOver) {
     return "Konec hry";
@@ -132,6 +135,16 @@ function getStatusText() {
     return "Pauza";
   }
   return "Hra běží";
+}
+
+function getPauseButtonText() {
+  if (waitingForStart || state.isGameOver) {
+    return "Start";
+  }
+  if (state.isPaused) {
+    return "Pokračovat";
+  }
+  return "Pauza";
 }
 
 function drawCell(position, color) {
@@ -175,9 +188,32 @@ function renderCanvas() {
     drawCell(state.food, "#d12c2c");
   }
 
+  if (state.powerUp) {
+    const powerUpColors = { slow: "#4488ff", bonus: "#f0c020", shrink: "#a040c0" };
+    drawCell(state.powerUp, powerUpColors[state.powerUp.type] ?? "#ffffff");
+  }
+
   state.snake.forEach((segment, index) => {
     drawCell(segment, index === 0 ? "#111111" : "#2e8b57");
   });
+}
+
+const POWER_UP_LABELS = {
+  slow: "ZPOMALENÍ",
+  bonus: "BONUS",
+  shrink: "ZKRÁCENÍ",
+};
+
+function renderPowerUpStatus() {
+  if (!powerUpStatusEl) return;
+  const ap = state.activePowerUp;
+  if (ap) {
+    powerUpStatusEl.textContent = `${POWER_UP_LABELS[ap.type] ?? ap.type}: ${ap.ticksRemaining} ticků`;
+    powerUpStatusEl.dataset.type = ap.type;
+  } else {
+    powerUpStatusEl.textContent = "";
+    powerUpStatusEl.dataset.type = "";
+  }
 }
 
 function renderSaveForm() {
@@ -190,14 +226,25 @@ function render() {
   scoreEl.textContent = String(state.score);
   levelEl.textContent = String(state.level);
   statusEl.textContent = getStatusText();
+  if (pauseButton) {
+    pauseButton.textContent = getPauseButtonText();
+  }
   renderCanvas();
+  renderPowerUpStatus();
   renderSaveForm();
   renderScoreHistory();
 }
 
 function applyState(nextState) {
   const wasGameOver = state.isGameOver;
+  const prevActivePowerUpType = state.activePowerUp?.type ?? null;
   state = nextState;
+
+  const nextActivePowerUpType = state.activePowerUp?.type ?? null;
+  if (prevActivePowerUpType !== nextActivePowerUpType && tickHandle !== null) {
+    stopLoop();
+    startLoop();
+  }
 
   if (!wasGameOver && state.isGameOver) {
     if (state.score > 0 && !activeRunSaved) {
@@ -215,11 +262,15 @@ function advanceOneTick() {
   applyState(stepGame(state));
 }
 
+function getTickMs() {
+  return state.activePowerUp?.type === 'slow' ? TICK_MS_SLOW : TICK_MS;
+}
+
 function startLoop() {
   if (tickHandle !== null) {
     return;
   }
-  tickHandle = window.setInterval(advanceOneTick, TICK_MS);
+  tickHandle = window.setInterval(advanceOneTick, getTickMs());
 }
 
 function stopLoop() {
@@ -307,6 +358,7 @@ for (const button of document.querySelectorAll("[data-dir]")) {
 for (const button of document.querySelectorAll("[data-action]")) {
   button.addEventListener("click", () => {
     if (button.dataset.action === "pause") {
+      if (startGameIfNeeded()) return;
       togglePauseAction();
       return;
     }
@@ -315,6 +367,40 @@ for (const button of document.querySelectorAll("[data-action]")) {
     }
   });
 }
+
+let swipeStartX = null;
+let swipeStartY = null;
+const MIN_SWIPE_PX = 20;
+
+canvas.addEventListener("touchstart", (event) => {
+  event.preventDefault();
+  const touch = event.changedTouches[0];
+  swipeStartX = touch.clientX;
+  swipeStartY = touch.clientY;
+}, { passive: false });
+
+canvas.addEventListener("touchend", (event) => {
+  event.preventDefault();
+  if (swipeStartX === null) return;
+  const touch = event.changedTouches[0];
+  const dx = touch.clientX - swipeStartX;
+  const dy = touch.clientY - swipeStartY;
+  swipeStartX = null;
+  swipeStartY = null;
+
+  if (Math.abs(dx) < MIN_SWIPE_PX && Math.abs(dy) < MIN_SWIPE_PX) {
+    // Tap — spustit nebo pozastavit
+    if (startGameIfNeeded()) return;
+    togglePauseAction();
+    return;
+  }
+
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    handleDirectionChange(dx > 0 ? "RIGHT" : "LEFT");
+  } else {
+    handleDirectionChange(dy > 0 ? "DOWN" : "UP");
+  }
+}, { passive: false });
 
 scoreForm.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -342,6 +428,8 @@ window.render_game_to_text = () =>
     snake: state.snake,
     food: state.food,
     walls: state.walls,
+    powerUp: state.powerUp,
+    activePowerUp: state.activePowerUp,
   });
 
 window.advanceTime = (ms = TICK_MS) => {

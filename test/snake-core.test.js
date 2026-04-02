@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   placeFood,
+  placePowerUp,
   setDirection,
   stepGame,
 } from "../src/snake-core.js";
@@ -24,6 +25,8 @@ function makeState(overrides = {}) {
     isGameOver: false,
     isPaused: false,
     ticks: 0,
+    powerUp: null,
+    activePowerUp: null,
     ...overrides,
   };
 }
@@ -98,6 +101,74 @@ test("po dosažení 10 bodů se otevře další level a přibudou zdi", () => {
 test("setDirection neumožní okamžité otočení o 180°", () => {
   const updated = setDirection(makeState(), "LEFT");
   assert.equal(updated.nextDirection, "RIGHT");
+});
+
+// Power-up testy
+
+test("power-up bonus přidá 3 body bez růstu hada", () => {
+  const state = makeState({
+    powerUp: { x: 4, y: 3, type: "bonus", ticksLeft: 20 },
+  });
+  const next = stepGame(state, { rng: () => 0.5 });
+  assert.equal(next.score, 3);
+  assert.equal(next.snake.length, 3); // had neroste
+  assert.equal(next.powerUp, null);   // power-up byl sebran
+});
+
+test("power-up shrink zkrátí hada o 3 segmenty", () => {
+  const state = makeState({
+    snake: [
+      { x: 3, y: 3 },
+      { x: 2, y: 3 },
+      { x: 1, y: 3 },
+      { x: 0, y: 3 },
+      { x: 0, y: 4 },
+    ],
+    powerUp: { x: 4, y: 3, type: "shrink", ticksLeft: 20 },
+  });
+  const next = stepGame(state, { rng: () => 0.5 });
+  assert.equal(next.snake.length, 2); // 5 + 1 posun - 1 tail = 5 → -3 = 2
+  assert.equal(next.powerUp, null);
+});
+
+test("power-up slow nastaví activePowerUp a vyprší po 30 tickách", () => {
+  const state = makeState({
+    powerUp: { x: 4, y: 3, type: "slow", ticksLeft: 20 },
+  });
+  const next = stepGame(state, { rng: () => 0.5 });
+  assert.ok(next.activePowerUp !== null);
+  assert.equal(next.activePowerUp.type, "slow");
+  assert.equal(next.activePowerUp.ticksRemaining, 30);
+  assert.equal(next.powerUp, null);
+
+  // Testujeme expiraci přímo přes stav s nízkým ticksRemaining
+  const almostExpired = makeState({
+    activePowerUp: { type: "slow", ticksRemaining: 1 },
+  });
+  const expired = stepGame(almostExpired, { rng: () => 0.5 });
+  assert.equal(expired.activePowerUp, null);
+});
+
+test("power-up zmizí po 25 tickách bez sebrání", () => {
+  const state = makeState({
+    powerUp: { x: 7, y: 7, type: "bonus", ticksLeft: 3 },
+  });
+  // 3 kroky, had míří jinam (food je jinde)
+  let s = stepGame(state, { rng: () => 0.5 });
+  s = stepGame(s, { rng: () => 0.5 });
+  s = stepGame(s, { rng: () => 0.5 });
+  assert.equal(s.powerUp, null);
+});
+
+test("placePowerUp nevybere pozici obsazenou jídlem nebo hadem", () => {
+  const gridSize = 4;
+  const snake = [{ x: 0, y: 0 }, { x: 1, y: 0 }];
+  const food = { x: 2, y: 0 };
+  const pu = placePowerUp({ gridSize, snake, walls: [], food, rng: () => 0 });
+  assert.ok(pu !== null);
+  const snakeKeys = new Set(snake.map((s) => `${s.x},${s.y}`));
+  assert.ok(!snakeKeys.has(`${pu.x},${pu.y}`));
+  assert.ok(!(pu.x === food.x && pu.y === food.y));
 });
 
 test("placeFood umí vybrat jediné volné pole", () => {

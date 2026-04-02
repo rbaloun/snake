@@ -54,9 +54,16 @@ h2 {
   aspect-ratio: 1 / 1;
   border: 1px solid #2d2d2d;
   background: #f2f2f2;
+  touch-action: none;
 }
 
 .controls-hint {
+  margin: 10px 0 0;
+  font-size: 0.95rem;
+}
+
+.controls-hint-touch {
+  display: none;
   margin: 10px 0 0;
   font-size: 0.95rem;
 }
@@ -107,6 +114,29 @@ kbd {
   margin: 8px 0 0;
 }
 
+.power-up-status {
+  margin: 0;
+  font-weight: 600;
+  font-size: 0.95rem;
+  min-height: 1.3em;
+}
+
+.power-up-status:empty {
+  display: none;
+}
+
+.power-up-status[data-type="slow"] {
+  color: #4488ff;
+}
+
+.power-up-status[data-type="bonus"] {
+  color: #c08000;
+}
+
+.power-up-status[data-type="shrink"] {
+  color: #a040c0;
+}
+
 .sidebar {
   display: grid;
   gap: 20px;
@@ -147,5 +177,22 @@ kbd {
 @media (max-width: 860px) {
   .app {
     grid-template-columns: 1fr;
+  }
+
+  .controls-hint {
+    display: none;
+  }
+
+  .controls-hint-touch {
+    display: block;
+  }
+
+  .touch-controls button {
+    min-height: 56px;
+    font-size: 1.05rem;
+  }
+
+  .dpad {
+    gap: 6px;
   }
 }
