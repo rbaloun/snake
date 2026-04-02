@@ -18,12 +18,21 @@ body {
 .app {
   display: grid;
   grid-template-columns: minmax(320px, 560px) minmax(240px, 420px);
+  grid-template-areas:
+    "game controls"
+    "game history";
+  align-items: start;
   gap: 20px;
   max-width: 1040px;
   margin: 0 auto;
 }
 
+.game-panel     { grid-area: game; }
+.touch-controls { grid-area: controls; }
+.sidebar        { grid-area: history; }
+
 .game-panel,
+.touch-controls,
 .sidebar section {
   background: #ffffff;
   border: 1px solid #e3e3e3;
@@ -175,8 +184,37 @@ kbd {
 }
 
 @media (max-width: 860px) {
+  body {
+    padding: 8px;
+  }
+
   .app {
     grid-template-columns: 1fr;
+    grid-template-areas:
+      "game"
+      "controls"
+      "history";
+    gap: 10px;
+  }
+
+  .game-panel,
+  .touch-controls,
+  .sidebar section {
+    padding: 10px;
+  }
+
+  h1 {
+    font-size: 1.3rem;
+    margin-bottom: 6px;
+  }
+
+  .stats {
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  #game-canvas {
+    max-height: min(100%, calc(100dvh - 400px));
   }
 
   .controls-hint {
