@@ -107,6 +107,29 @@ kbd {
   margin: 8px 0 0;
 }
 
+.power-up-status {
+  margin: 0;
+  font-weight: 600;
+  font-size: 0.95rem;
+  min-height: 1.3em;
+}
+
+.power-up-status:empty {
+  display: none;
+}
+
+.power-up-status[data-type="slow"] {
+  color: #4488ff;
+}
+
+.power-up-status[data-type="bonus"] {
+  color: #c08000;
+}
+
+.power-up-status[data-type="shrink"] {
+  color: #a040c0;
+}
+
 .sidebar {
   display: grid;
   gap: 20px;

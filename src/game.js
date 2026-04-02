@@ -7,6 +7,7 @@ import {
 } from "./snake-core.js";
 
 const TICK_MS = 140;
+const TICK_MS_SLOW = 280;
 const SCORE_STORAGE_KEY = "snake-score-history-v1";
 
 const canvas = document.querySelector("#game-canvas");
@@ -14,6 +15,7 @@ const ctx = canvas.getContext("2d");
 const scoreEl = document.querySelector("#score");
 const levelEl = document.querySelector("#level");
 const statusEl = document.querySelector("#status");
+const powerUpStatusEl = document.querySelector("#power-up-status");
 const scoreForm = document.querySelector("#score-form");
 const playerNameInput = document.querySelector("#player-name");
 const saveStatus = document.querySelector("#save-status");
@@ -175,9 +177,32 @@ function renderCanvas() {
     drawCell(state.food, "#d12c2c");
   }
 
+  if (state.powerUp) {
+    const powerUpColors = { slow: "#4488ff", bonus: "#f0c020", shrink: "#a040c0" };
+    drawCell(state.powerUp, powerUpColors[state.powerUp.type] ?? "#ffffff");
+  }
+
   state.snake.forEach((segment, index) => {
     drawCell(segment, index === 0 ? "#111111" : "#2e8b57");
   });
+}
+
+const POWER_UP_LABELS = {
+  slow: "ZPOMALENÍ",
+  bonus: "BONUS",
+  shrink: "ZKRÁCENÍ",
+};
+
+function renderPowerUpStatus() {
+  if (!powerUpStatusEl) return;
+  const ap = state.activePowerUp;
+  if (ap) {
+    powerUpStatusEl.textContent = `${POWER_UP_LABELS[ap.type] ?? ap.type}: ${ap.ticksRemaining} ticků`;
+    powerUpStatusEl.dataset.type = ap.type;
+  } else {
+    powerUpStatusEl.textContent = "";
+    powerUpStatusEl.dataset.type = "";
+  }
 }
 
 function renderSaveForm() {
@@ -191,13 +216,21 @@ function render() {
   levelEl.textContent = String(state.level);
   statusEl.textContent = getStatusText();
   renderCanvas();
+  renderPowerUpStatus();
   renderSaveForm();
   renderScoreHistory();
 }
 
 function applyState(nextState) {
   const wasGameOver = state.isGameOver;
+  const prevActivePowerUpType = state.activePowerUp?.type ?? null;
   state = nextState;
+
+  const nextActivePowerUpType = state.activePowerUp?.type ?? null;
+  if (prevActivePowerUpType !== nextActivePowerUpType && tickHandle !== null) {
+    stopLoop();
+    startLoop();
+  }
 
   if (!wasGameOver && state.isGameOver) {
     if (state.score > 0 && !activeRunSaved) {
@@ -215,11 +248,15 @@ function advanceOneTick() {
   applyState(stepGame(state));
 }
 
+function getTickMs() {
+  return state.activePowerUp?.type === 'slow' ? TICK_MS_SLOW : TICK_MS;
+}
+
 function startLoop() {
   if (tickHandle !== null) {
     return;
   }
-  tickHandle = window.setInterval(advanceOneTick, TICK_MS);
+  tickHandle = window.setInterval(advanceOneTick, getTickMs());
 }
 
 function stopLoop() {
@@ -342,6 +379,8 @@ window.render_game_to_text = () =>
     snake: state.snake,
     food: state.food,
     walls: state.walls,
+    powerUp: state.powerUp,
+    activePowerUp: state.activePowerUp,
   });
 
 window.advanceTime = (ms = TICK_MS) => {
