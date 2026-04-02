@@ -20,6 +20,7 @@ const scoreForm = document.querySelector("#score-form");
 const playerNameInput = document.querySelector("#player-name");
 const saveStatus = document.querySelector("#save-status");
 const historyEl = document.querySelector("#score-history");
+const pauseButton = document.querySelector('[data-action="pause"]');
 
 let state = createInitialState();
 let tickHandle = null;
@@ -125,7 +126,7 @@ function renderScoreHistory() {
 
 function getStatusText() {
   if (waitingForStart) {
-    return "Čeká na start (mezerník)";
+    return "Čeká na start";
   }
   if (state.isGameOver) {
     return "Konec hry";
@@ -134,6 +135,16 @@ function getStatusText() {
     return "Pauza";
   }
   return "Hra běží";
+}
+
+function getPauseButtonText() {
+  if (waitingForStart || state.isGameOver) {
+    return "Start";
+  }
+  if (state.isPaused) {
+    return "Pokračovat";
+  }
+  return "Pauza";
 }
 
 function drawCell(position, color) {
@@ -215,6 +226,9 @@ function render() {
   scoreEl.textContent = String(state.score);
   levelEl.textContent = String(state.level);
   statusEl.textContent = getStatusText();
+  if (pauseButton) {
+    pauseButton.textContent = getPauseButtonText();
+  }
   renderCanvas();
   renderPowerUpStatus();
   renderSaveForm();
@@ -344,6 +358,7 @@ for (const button of document.querySelectorAll("[data-dir]")) {
 for (const button of document.querySelectorAll("[data-action]")) {
   button.addEventListener("click", () => {
     if (button.dataset.action === "pause") {
+      if (startGameIfNeeded()) return;
       togglePauseAction();
       return;
     }
@@ -352,6 +367,40 @@ for (const button of document.querySelectorAll("[data-action]")) {
     }
   });
 }
+
+let swipeStartX = null;
+let swipeStartY = null;
+const MIN_SWIPE_PX = 20;
+
+canvas.addEventListener("touchstart", (event) => {
+  event.preventDefault();
+  const touch = event.changedTouches[0];
+  swipeStartX = touch.clientX;
+  swipeStartY = touch.clientY;
+}, { passive: false });
+
+canvas.addEventListener("touchend", (event) => {
+  event.preventDefault();
+  if (swipeStartX === null) return;
+  const touch = event.changedTouches[0];
+  const dx = touch.clientX - swipeStartX;
+  const dy = touch.clientY - swipeStartY;
+  swipeStartX = null;
+  swipeStartY = null;
+
+  if (Math.abs(dx) < MIN_SWIPE_PX && Math.abs(dy) < MIN_SWIPE_PX) {
+    // Tap — spustit nebo pozastavit
+    if (startGameIfNeeded()) return;
+    togglePauseAction();
+    return;
+  }
+
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    handleDirectionChange(dx > 0 ? "RIGHT" : "LEFT");
+  } else {
+    handleDirectionChange(dy > 0 ? "DOWN" : "UP");
+  }
+}, { passive: false });
 
 scoreForm.addEventListener("submit", (event) => {
   event.preventDefault();
